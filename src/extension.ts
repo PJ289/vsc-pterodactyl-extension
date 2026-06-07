@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
 import { AccountManager } from './accounts/accountManager';
+import { ServerSettingsManager } from './accounts/serverSettingsManager';
 import { PterodactylClient, PteroAccount } from './api/pterodactylClient';
 import { ServerTreeProvider, ServerTreeItem } from './views/serverTreeProvider';
 import { PterodactylFileSystemProvider } from './filesystem/pterodactylFileSystemProvider';
 import { AccountFormPanel } from './views/accountFormPanel';
 import { SftpClient } from './sftp/sftpClient';
 import { TerminalManager } from './terminal/terminalManager';
+import { formatSftpEndpoint, resolveSftpConnection } from './utils/sftpConnection';
 
 let accountManager: AccountManager;
+let serverSettingsManager: ServerSettingsManager;
 let serverTreeProvider: ServerTreeProvider;
 let fileSystemProvider: PterodactylFileSystemProvider;
 let terminalManager: TerminalManager;
@@ -23,7 +26,8 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Initialize managers
     accountManager = new AccountManager(context);
-    serverTreeProvider = new ServerTreeProvider(accountManager);
+    serverSettingsManager = new ServerSettingsManager(context);
+    serverTreeProvider = new ServerTreeProvider(accountManager, serverSettingsManager);
     fileSystemProvider = new PterodactylFileSystemProvider();
     terminalManager = new TerminalManager();
 
@@ -52,6 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('pterodactyl.connectServer', (item?: ServerTreeItem) => connectToServer(item)),
         vscode.commands.registerCommand('pterodactyl.disconnectServer', (item?: ServerTreeItem) => disconnectServer(item)),
         vscode.commands.registerCommand('pterodactyl.reconnectServer', (item?: ServerTreeItem) => reconnectServer(item)),
+        vscode.commands.registerCommand('pterodactyl.configureSftpHost', (item?: ServerTreeItem) => configureSftpHost(item)),
         vscode.commands.registerCommand('pterodactyl.exportData', () => accountManager.exportAccounts()),
         vscode.commands.registerCommand('pterodactyl.importData', () => accountManager.importAccounts()),
         vscode.commands.registerCommand('pterodactyl.showSftpLog', () => SftpClient.showDebugLog()),
@@ -304,11 +309,16 @@ async function connectToServer(item?: ServerTreeItem, silent: boolean = false): 
             return;
         }
 
-        // Get SFTP connection details from server
-        const sftpHost = server.sftp_details.ip;
-        const sftpPort = server.sftp_details.port || 2022;
+        // Get SFTP connection details (custom override or panel default)
+        const override = serverSettingsManager.getSettings(account.id, server.identifier);
+        const sftp = resolveSftpConnection(server, override);
+        const sftpHost = sftp.host;
+        const sftpPort = sftp.port;
 
-        Logger.info(`SFTP Connect: ${server.name} -> ${sftpHost}:${sftpPort}`);
+        Logger.info(
+            `SFTP Connect: ${server.name} -> ${sftpHost}:${sftpPort}` +
+            (sftp.isCustomHost || sftp.isCustomPort ? ' (custom override)' : '')
+        );
 
         if (!sftpHost) {
             vscode.window.showErrorMessage(`No SFTP host found for server "${server.name}". Check console for details.`);
@@ -481,6 +491,117 @@ async function reconnectServer(item?: ServerTreeItem): Promise<void> {
         } else {
             Logger.error('Failed to reconnect', err);
             vscode.window.showErrorMessage(`Failed to reconnect to "${serverName}": ${err.message}`);
+        }
+    }
+}
+
+async function configureSftpHost(item?: ServerTreeItem): Promise<void> {
+    if (!item?.server || !item?.account) {
+        vscode.window.showErrorMessage('Please select a server to configure SFTP connection.');
+        return;
+    }
+
+    const { server, account } = item;
+    const panelHost = server.sftp_details.ip?.trim() || '';
+    const panelPort = server.sftp_details.port || 2022;
+    const currentOverride = serverSettingsManager.getSettings(account.id, server.identifier);
+    const current = resolveSftpConnection(server, currentOverride);
+
+    const hostInput = await vscode.window.showInputBox({
+        title: `SFTP Host — ${server.name}`,
+        prompt: 'IP or FQDN for SFTP. Leave empty to use the panel value.',
+        placeHolder: panelHost ? `Panel default: ${panelHost}` : 'e.g. 192.168.1.100 or sftp.local',
+        value: currentOverride?.sftpHost ?? '',
+        validateInput: (value) => {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return null;
+            }
+            if (/\s/.test(trimmed)) {
+                return 'Host cannot contain spaces';
+            }
+            return null;
+        },
+    });
+
+    if (hostInput === undefined) {
+        return;
+    }
+
+    const portInput = await vscode.window.showInputBox({
+        title: `SFTP Port — ${server.name}`,
+        prompt: 'SFTP port. Leave empty to use the panel value.',
+        placeHolder: `Panel default: ${panelPort}`,
+        value: currentOverride?.sftpPort?.toString() ?? '',
+        validateInput: (value) => {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return null;
+            }
+            const port = Number(trimmed);
+            if (!Number.isInteger(port) || port < 1 || port > 65535) {
+                return 'Port must be a number between 1 and 65535';
+            }
+            return null;
+        },
+    });
+
+    if (portInput === undefined) {
+        return;
+    }
+
+    const trimmedHost = hostInput.trim();
+    const trimmedPort = portInput.trim();
+    await serverSettingsManager.setSettings(account.id, server.identifier, {
+        sftpHost: trimmedHost || undefined,
+        sftpPort: trimmedPort ? Number(trimmedPort) : undefined,
+    });
+
+    const updated = resolveSftpConnection(
+        server,
+        serverSettingsManager.getSettings(account.id, server.identifier)
+    );
+
+    if (!updated.host) {
+        vscode.window.showWarningMessage(
+            `No SFTP host configured for "${server.name}". Set a custom host or check panel SFTP settings.`
+        );
+        return;
+    }
+
+    const endpoint = formatSftpEndpoint(updated.host, updated.port);
+    const usingCustom = updated.isCustomHost || updated.isCustomPort;
+
+    vscode.window.showInformationMessage(
+        usingCustom
+            ? `SFTP for "${server.name}" will use ${endpoint} (custom). Panel API remains on ${account.panelUrl}.`
+            : `SFTP for "${server.name}" will use panel default ${endpoint}.`
+    );
+
+    const isConnected = vscode.workspace.workspaceFolders?.some(
+        f => f.uri.scheme === 'ptero' && f.uri.authority === server.identifier
+    );
+
+    if (isConnected && (updated.host !== current.host || updated.port !== current.port)) {
+        const reconnect = await vscode.window.showInformationMessage(
+            `"${server.name}" is connected. Reconnect now with the new SFTP settings?`,
+            'Reconnect',
+            'Later'
+        );
+        if (reconnect === 'Reconnect') {
+            try {
+                await fileSystemProvider.disconnectServer(server.identifier);
+                fileSystemProvider.registerConnection(
+                    server.identifier,
+                    account,
+                    server.name,
+                    updated.host,
+                    updated.port
+                );
+                vscode.window.showInformationMessage(`Reconnected "${server.name}" via ${endpoint}.`);
+            } catch (err: any) {
+                vscode.window.showErrorMessage(`Failed to reconnect: ${err.message}`);
+            }
         }
     }
 }

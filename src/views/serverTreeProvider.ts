@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { AccountManager } from '../accounts/accountManager';
+import { ServerSftpSettings, ServerSettingsManager } from '../accounts/serverSettingsManager';
 import { PterodactylClient, PteroAccount, PteroServer } from '../api/pterodactylClient';
+import { formatSftpEndpoint, resolveSftpConnection } from '../utils/sftpConnection';
 
 export type TreeNodeType = 'account' | 'server' | 'serverInfo' | 'loading' | 'error' | 'empty';
 
@@ -11,6 +13,7 @@ export class ServerTreeItem extends vscode.TreeItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly account?: PteroAccount,
         public readonly server?: PteroServer,
+        public readonly sftpOverride?: ServerSftpSettings,
     ) {
         super(label, collapsibleState);
         this.contextValue = nodeType;
@@ -129,8 +132,15 @@ export class ServerTreeItem extends vscode.TreeItem {
             md.appendMarkdown(`- Disk: ${formatLimitMB(s.limits.disk)}\n\n`);
         }
 
-        if (s.sftp_details.ip) {
-            md.appendMarkdown(`**SFTP**: \`${s.sftp_details.ip}:${s.sftp_details.port}\`\n`);
+        if (this.server) {
+            const sftp = resolveSftpConnection(this.server, this.sftpOverride);
+            if (sftp.host) {
+                const customNote = sftp.isCustomHost || sftp.isCustomPort ? ' (custom)' : '';
+                md.appendMarkdown(`**SFTP**: \`${formatSftpEndpoint(sftp.host, sftp.port)}\`${customNote}\n`);
+                if (sftp.isCustomHost && this.server.sftp_details.ip) {
+                    md.appendMarkdown(`**Panel SFTP**: \`${formatSftpEndpoint(this.server.sftp_details.ip, this.server.sftp_details.port || 2022)}\`\n`);
+                }
+            }
         }
         if (s.description) {
             md.appendMarkdown(`\n_${s.description}_`);
@@ -191,9 +201,15 @@ export class ServerTreeProvider implements vscode.TreeDataProvider<ServerTreeIte
     private loadingAccounts: Set<string> = new Set();
     private errorAccounts: Map<string, string> = new Map();
 
-    constructor(private accountManager: AccountManager) {
+    constructor(
+        private accountManager: AccountManager,
+        private serverSettingsManager: ServerSettingsManager
+    ) {
         accountManager.onDidChangeAccounts(() => {
             this.serverCache.clear();
+            this.refresh();
+        });
+        serverSettingsManager.onDidChangeSettings(() => {
             this.refresh();
         });
     }
@@ -235,13 +251,13 @@ export class ServerTreeProvider implements vscode.TreeDataProvider<ServerTreeIte
 
         // Server children: show info details
         if (element.nodeType === 'server' && element.server) {
-            return this.getServerInfoItems(element.server);
+            return this.getServerInfoItems(element.server, element.account);
         }
 
         return [];
     }
 
-    private getServerInfoItems(server: PteroServer): ServerTreeItem[] {
+    private getServerInfoItems(server: PteroServer, account?: PteroAccount): ServerTreeItem[] {
         const items: ServerTreeItem[] = [];
 
         // IP & Port
@@ -254,9 +270,14 @@ export class ServerTreeProvider implements vscode.TreeDataProvider<ServerTreeIte
         items.push(createInfoItem('pulse', 'RAM', formatMB(server.limits.memory)));
         items.push(createInfoItem('database', 'Disk', formatMB(server.limits.disk)));
 
-        // SFTP info
-        if (server.sftp_details.ip) {
-            items.push(createInfoItem('remote', 'SFTP', `${server.sftp_details.ip}:${server.sftp_details.port}`));
+        // SFTP info (shows custom override when configured)
+        const override = account
+            ? this.serverSettingsManager.getSettings(account.id, server.identifier)
+            : undefined;
+        const sftp = resolveSftpConnection(server, override);
+        if (sftp.host) {
+            const customNote = sftp.isCustomHost || sftp.isCustomPort ? ' (custom)' : '';
+            items.push(createInfoItem('remote', 'SFTP', `${formatSftpEndpoint(sftp.host, sftp.port)}${customNote}`));
         }
 
         // Node
@@ -280,7 +301,8 @@ export class ServerTreeProvider implements vscode.TreeDataProvider<ServerTreeIte
                     'server',
                     vscode.TreeItemCollapsibleState.Collapsed, // Collapsed to show info children
                     account,
-                    server
+                    server,
+                    this.serverSettingsManager.getSettings(account.id, server.identifier)
                 )
             );
         }
@@ -326,7 +348,8 @@ export class ServerTreeProvider implements vscode.TreeDataProvider<ServerTreeIte
                     'server',
                     vscode.TreeItemCollapsibleState.Collapsed,
                     account,
-                    server
+                    server,
+                    this.serverSettingsManager.getSettings(account.id, server.identifier)
                 )
             );
         } catch (err: any) {
@@ -355,7 +378,14 @@ export class ServerTreeProvider implements vscode.TreeDataProvider<ServerTreeIte
                 if (server) {
                     const account = this.accountManager.getAccounts().find(a => a.id === accountId);
                     if (account) {
-                        return new ServerTreeItem(server.name, 'server', vscode.TreeItemCollapsibleState.Collapsed, account, server);
+                        return new ServerTreeItem(
+                            server.name,
+                            'server',
+                            vscode.TreeItemCollapsibleState.Collapsed,
+                            account,
+                            server,
+                            this.serverSettingsManager.getSettings(account.id, server.identifier)
+                        );
                     }
                 }
             }

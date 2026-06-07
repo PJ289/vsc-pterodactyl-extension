@@ -1,4 +1,23 @@
+# Build output
 out/
-node_modules/
 *.vsix
+
+# Dependencies
+node_modules/
+
+# Test runner / extension host
 .vscode-test/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

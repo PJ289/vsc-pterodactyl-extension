@@ -2,6 +2,16 @@
 
 All notable changes to the "pterodactyl-sftp" extension will be documented in this file.
 
+## [2.0.3] - 2026-06-07
+
+### Added
+- **Custom SFTP host per server**: Override SFTP IP/FQDN and port while keeping the panel API on its domain. Use **Configure SFTP Host** from the server context menu.
+- **Documentation**: Build, VSIX install, and Cursor/VS Code installation instructions in README.
+
+### Changed
+- Expanded `.gitignore` to exclude build artifacts, dependencies, logs, and environment files.
+- Removed VS Code Marketplace / Open VSX publish workflow; releases are distributed as `.vsix` on GitHub only.
+
 ## [2.0.2] - 2026-02-16
 
 - **Fix**: Restored the "Generate Key Pair" button in the manual SSH configuration section of the Add/Edit Account form.

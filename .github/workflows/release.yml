@@ -27,7 +27,9 @@ jobs:
 
       - name: Extract Changelog
         run: |
-          sed -n "/^## ${{ github.ref_name }}/,/^## /{/^## /b;p}" CHANGELOG.md > ./RELEASE_CHANGELOG
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          sed -n "/^## \\[${VERSION}\\]/,/^## /{/^## /b;p}" CHANGELOG.md > ./RELEASE_CHANGELOG
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
