@@ -4,3 +4,6 @@ src/**
 .gitignore
 tsconfig.json
 **/*.map
+.github/**
+test_ssh2*.js
+verify_crypto_openssh.js

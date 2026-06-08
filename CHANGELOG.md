@@ -2,6 +2,12 @@
 
 All notable changes to the "pterodactyl-sftp" extension will be documented in this file.
 
+## [2.0.4] - 2026-06-07
+
+### Fixed
+- **Extension activation**: VSIX packages now always include runtime dependencies (`ssh2`, `ws`). A broken package without `node_modules` caused `command 'pterodactyl.*' not found` errors.
+- CI verifies the packaged `.vsix` contains `node_modules/ssh2` before uploading to GitHub Releases.
+
 ## [2.0.3] - 2026-06-07
 
 ### Added

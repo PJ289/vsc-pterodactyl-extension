@@ -1,0 +1,9 @@
+# Keep Cursor search/indexing (rg.exe) off heavy or generated paths
+node_modules/
+out/
+dist/
+.vscode-test/
+_vsix*/
+*.vsix
+*.zip
+.git/

@@ -25,6 +25,11 @@ jobs:
       - name: Package Extension
         run: npx @vscode/vsce package
 
+      - name: Verify VSIX contains runtime dependencies
+        run: |
+          unzip -l *.vsix | grep -q "node_modules/ssh2/" || (echo "ERROR: VSIX is missing node_modules/ssh2. Do not use --no-dependencies." && exit 1)
+          unzip -l *.vsix | grep -q "extension/out/extension.js" || (echo "ERROR: VSIX is missing compiled output." && exit 1)
+
       - name: Extract Changelog
         run: |
           VERSION="${{ github.ref_name }}"

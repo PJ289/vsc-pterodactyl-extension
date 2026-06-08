@@ -68,7 +68,9 @@ To create an installable package (`.vsix`):
 npx vsce package
 ```
 
-This generates a file like `pterodactyl-sftp-2.0.3.vsix` in the project root.
+This generates a file like `pterodactyl-sftp-2.0.4.vsix` in the project root (~5 MB; includes `ssh2` and `ws`).
+
+> **Important:** Always run `npm run package` or `npx vsce package` **without** `--no-dependencies`. A smaller `.vsix` (~180 KB) is broken and will fail to activate.
 
 ## Install in VS Code or Cursor
 
@@ -80,7 +82,7 @@ Cursor is compatible with VS Code extensions. You can install this extension in 
 2. Open **Extensions** (`Ctrl+Shift+X`).
 3. Click the **`...`** menu at the top of the Extensions panel.
 4. Choose **Install from VSIX...**
-5. Select `pterodactyl-sftp-2.0.3.vsix` (or the version you built).
+5. Select `pterodactyl-sftp-2.0.4.vsix` (or the version you built). The file should be **~5 MB**, not ~180 KB.
 6. Reload Cursor/VS Code when prompted.
 
 **Command line (Cursor):**
@@ -118,7 +120,7 @@ Steps:
 4. Set the release title to `2.0.3` and paste the changelog section if you want.
 5. Click **Publish release**.
 
-The **Release Extension** workflow runs `npm ci`, packages with `vsce`, and uploads `pterodactyl-sftp-2.0.3.vsix` to the release assets.
+The **Release Extension** workflow runs `npm ci`, packages with `vsce`, and uploads `pterodactyl-sftp-2.0.4.vsix` to the release assets.
 
 ## Extension Settings
 
@@ -131,6 +133,17 @@ This extension contributes the following settings:
 
 -   Large file transfers may take time depending on network connection.
 -   Ensure your Pterodactyl node has SFTP ports open and accessible.
+
+### `command 'pterodactyl.*' not found`
+
+The extension failed to activate, usually because the installed `.vsix` is missing `node_modules`. Reinstall from a proper build:
+
+1. Uninstall the current extension in Cursor/VS Code.
+2. Build with `npm install && npm run package` (produces ~5–15 MB `.vsix`, not ~180 KB).
+3. Install that file via **Install from VSIX...**
+4. Reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**).
+
+Check **Output → Extension Host** for errors such as `Cannot find module 'ssh2'`.
 
 ## Release Notes
 
