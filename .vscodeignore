@@ -7,3 +7,14 @@ tsconfig.json
 .github/**
 test_ssh2*.js
 verify_crypto_openssh.js
+
+# Trim node_modules bloat (keep runtime .js / .node files)
+**/node_modules/**/test/**
+**/node_modules/**/tests/**
+**/node_modules/**/.github/**
+**/node_modules/**/examples/**
+**/node_modules/**/benchmark/**
+**/node_modules/**/docs/**
+**/node_modules/**/deps/**
+**/*.pdb
+**/node_modules/**/*.md

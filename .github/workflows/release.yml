@@ -7,7 +7,8 @@ on:
 jobs:
   build:
     name: Build and Release Extension
-    runs-on: ubuntu-latest
+    # Package on Windows so native ssh2 modules match Cursor/VS Code on Windows
+    runs-on: windows-latest
     permissions:
       contents: write
     steps:
@@ -18,19 +19,34 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install Dependencies
         run: npm ci
 
       - name: Package Extension
-        run: npx @vscode/vsce package
+        run: npm run package
 
-      - name: Verify VSIX contains runtime dependencies
+      - name: Verify VSIX package
+        shell: bash
         run: |
-          unzip -l *.vsix | grep -q "node_modules/ssh2/" || (echo "ERROR: VSIX is missing node_modules/ssh2. Do not use --no-dependencies." && exit 1)
-          unzip -l *.vsix | grep -q "extension/out/extension.js" || (echo "ERROR: VSIX is missing compiled output." && exit 1)
+          VSIX=$(ls *.vsix | head -1)
+          echo "VSIX file: $VSIX"
+          SIZE=$(stat -c%s "$VSIX" 2>/dev/null || stat -f%z "$VSIX")
+          echo "VSIX size: $SIZE bytes"
+          # Broken packages without node_modules are ~180 KB; expect several MB on Windows
+          MIN_SIZE=2000000
+          if [ "$SIZE" -lt "$MIN_SIZE" ]; then
+            echo "ERROR: VSIX too small ($SIZE bytes). Dependencies may be missing."
+            exit 1
+          fi
+          unzip -l "$VSIX" | grep -q "node_modules/ssh2/" || (echo "ERROR: missing node_modules/ssh2" && exit 1)
+          unzip -l "$VSIX" | grep -q "node_modules/ws/" || (echo "ERROR: missing node_modules/ws" && exit 1)
+          unzip -l "$VSIX" | grep -q "extension/out/extension.js" || (echo "ERROR: missing compiled output" && exit 1)
+          echo "VSIX verification passed."
 
       - name: Extract Changelog
+        shell: bash
         run: |
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
@@ -40,9 +56,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          draft: true
           prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
           body_path: ./RELEASE_CHANGELOG
           files: "*.vsix"
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
