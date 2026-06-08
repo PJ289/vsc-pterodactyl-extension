@@ -7,6 +7,9 @@
     "license": "MIT",
     "publisher": "minhmcpc",
     "author": "minhmcpc",
+    "contributors": [
+        "PJ289 (https://github.com/PJ289)"
+    ],
     "engines": {
         "vscode": "^1.80.0"
     },
@@ -19,12 +22,12 @@
     "main": "./out/extension.js",
     "repository": {
         "type": "git",
-        "url": "https://github.com/MinhMCPC/Pterodactyl-extension.git"
+        "url": "https://github.com/PJ289/vsc-pterodactyl-extension.git"
     },
     "bugs": {
-        "url": "https://github.com/MinhMCPC/Pterodactyl-extension/issues"
+        "url": "https://github.com/PJ289/vsc-pterodactyl-extension/issues"
     },
-    "homepage": "https://github.com/MinhMCPC/Pterodactyl-extension/blob/main/README.md",
+    "homepage": "https://github.com/PJ289/vsc-pterodactyl-extension#readme",
     "keywords": [
         "pterodactyl",
         "sftp",

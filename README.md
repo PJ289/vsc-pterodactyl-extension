@@ -1,156 +1,102 @@
 # Pterodactyl SFTP for VS Code 🦕
 
-Manage your Pterodactyl panel servers directly from VS Code. Browse, edit, and sync files with high security and speed.
+Manage your Pterodactyl panel servers directly from VS Code or Cursor. Browse, edit, and sync files over SFTP with panel API integration.
 
-[📖 Tài liệu hướng dẫn sử dụng (Tiếng Việt)](file:///./tutorial.html)
+[📖 User guide (tutorial.html)](./tutorial.html)
 
 ## Features
 
-### 🔑 Auto SSH Key Setup (New in v1.6.4)
-NOTE: This feature requires `ssh-keygen` behavior but is fully implemented in Node.js.
-1.  Open the Command Palette (`Ctrl+Shift+P`).
-2.  Run **Pterodactyl: Setup Auto SSH Key**.
-3.  Select the account you want to configure.
-4.  Enter a name for the key (e.g., `VSCode Key`) and an optional passphrase.
-5.  The extension will:
-    *   Generate a secure **Ed25519** SSH key pair.
-    *   **Save the Private Key** to your local `.ssh` directory.
-    *   **Upload the Public Key** automatically to your Pterodactyl Panel account.
-
--   **Server Management**: View all your servers in the "Pterodactyl SFTP" view.
--   **SFTP Integration**:
-    -   Connect to servers via SFTP protocol automatically.
-    -   Browse, open, edit, and save files directly in VS Code.
-    -   File operations upload seamlessly to your server.
--   **Power Actions**:
-    -   Start, Stop, Restart, and Kill servers from the context menu or command palette.
--   **Terminal Access**:
-    -   Open a streamlined terminal to send commands to your server console.
--   **Account Management**:
-    -   Add multiple Pterodactyl API accounts.
-    -   Import/Export account data for backup.
--   **Custom SFTP Host (per server)**:
-    -   Keep the panel API on its public domain.
-    -   Override SFTP host/port per server (e.g. local IP `192.168.1.10`).
-    -   Right-click a server → **Configure SFTP Host**.
+- **Server management** — List all servers from one or more panel accounts in the Pterodactyl SFTP sidebar.
+- **SFTP file editing** — Connect to a server, mount its files as a workspace folder, and edit/save directly in the editor.
+- **Custom SFTP host (per server)** — Keep the panel API on its public domain while overriding SFTP host/port per server (e.g. a local IP). Right-click a server → **Configure SFTP Host**.
+- **Power actions** — Start, stop, restart, and kill servers from the context menu.
+- **Terminal access** — Open a console terminal for live logs and commands.
+- **Multi-account support** — Add, edit, remove, import, and export panel accounts.
+- **SSH key setup** — Generate Ed25519 keys in Node.js, save them locally, and upload the public key to the panel automatically (**Pterodactyl: Setup Auto SSH Key**, or during account creation).
 
 ## Requirements
 
-To use this extension, you need:
-
-1.  **Pterodactyl Panel URL**: The URL to your panel (e.g., `https://panel.example.com`).
-2.  **API Key**: A client API key from your Pterodactyl account settings.
+1. **Pterodactyl Panel URL** — e.g. `https://panel.example.com`
+2. **Client API key** — from your Pterodactyl account settings
 
 ## Usage
 
-1.  Open the **Pterodactyl SFTP** view in the Activity Bar (icon looks like a feather/wing).
-2.  Click the **Add Account** (+) button.
-3.  Enter your Panel URL and API Key.
-4.  Once added, your servers will list automatically.
-5.  **Right-click** a server to:
-    -   **Connect**: Mounts the server files as a workspace folder.
-    -   **Configure SFTP Host**: Set a custom IP/FQDN and port for SFTP only.
-    -   **Terminal**: Opens a console interface.
-    -   **Power**: Start/Stop/Restart/Kill.
+1. Open the **Pterodactyl SFTP** view in the Activity Bar.
+2. Click **Add Account** (+) and enter your panel URL and API key.
+3. Your servers appear automatically under each account.
+4. **Right-click** a server to:
+   - **Connect** — mount server files as a workspace folder
+   - **Configure SFTP Host** — set a custom IP/FQDN and port for SFTP only
+   - **Open Terminal** — server console
+   - **Start / Stop / Restart / Kill** — power actions
+
+## Install
+
+Download `pterodactyl-sftp-2.0.4.vsix` from [GitHub Releases](https://github.com/PJ289/vsc-pterodactyl-extension/releases) or build it locally (see below).
+
+1. Open **Extensions** (`Ctrl+Shift+X`).
+2. Click **`...`** → **Install from VSIX...**
+3. Select the `.vsix` file (~2.5–3 MB on Windows builds; **not** ~180 KB).
+4. Reload the window when prompted.
+
+**Cursor:**
+
+```bash
+cursor --install-extension "path/to/pterodactyl-sftp-2.0.4.vsix"
+```
+
+**VS Code:**
+
+```bash
+code --install-extension "path/to/pterodactyl-sftp-2.0.4.vsix"
+```
+
+### Development mode
+
+1. Clone the repo and run `npm install && npm run compile`.
+2. Press **F5** to open an Extension Development Host window with the extension loaded.
 
 ## Build from Source
 
 ```bash
-git clone https://github.com/MinhMCPC/Pterodactyl-extension.git
-cd Pterodactyl-extension
+git clone https://github.com/PJ289/vsc-pterodactyl-extension.git
+cd vsc-pterodactyl-extension
 npm install
 npm run compile
 ```
 
-To create an installable package (`.vsix`):
+To create an installable package:
 
 ```bash
-npx vsce package
+npm run package
 ```
 
-This generates a file like `pterodactyl-sftp-2.0.4.vsix` in the project root (~5 MB; includes `ssh2` and `ws`).
+This produces `pterodactyl-sftp-2.0.4.vsix` in the project root.
 
-> **Important:** Always run `npm run package` or `npx vsce package` **without** `--no-dependencies`. A smaller `.vsix` (~180 KB) is broken and will fail to activate.
+> **Important:** Use `npm run package` or `npx vsce package` **without** `--no-dependencies`. A ~180 KB `.vsix` is missing runtime dependencies and will fail to activate.
 
-## Install in VS Code or Cursor
+## GitHub Releases
 
-Cursor is compatible with VS Code extensions. You can install this extension in three ways:
+Publishing a release triggers CI, which builds the `.vsix` on Windows and attaches it to the release. The extension is **not** published to the VS Code Marketplace.
 
-### Option A — Install from VSIX (recommended for local builds)
-
-1. Build the package (see above) or download a `.vsix` release.
-2. Open **Extensions** (`Ctrl+Shift+X`).
-3. Click the **`...`** menu at the top of the Extensions panel.
-4. Choose **Install from VSIX...**
-5. Select `pterodactyl-sftp-2.0.4.vsix` (or the version you built). The file should be **~5 MB**, not ~180 KB.
-6. Reload Cursor/VS Code when prompted.
-
-**Command line (Cursor):**
-
-```bash
-cursor --install-extension "C:\path\to\pterodactyl-sftp-2.0.3.vsix"
-```
-
-**Command line (VS Code):**
-
-```bash
-code --install-extension "C:\path\to\pterodactyl-sftp-2.0.3.vsix"
-```
-
-### Option B — Run in development mode
-
-1. Open this repository in Cursor or VS Code.
-2. Run `npm install` and `npm run compile`.
-3. Press **F5** (or **Run → Start Debugging**).
-4. A new **Extension Development Host** window opens with the extension loaded.
-
-Use this while developing or testing changes before packaging.
-
-Use this while developing or testing changes before packaging.
-
-## Publish a GitHub Release
-
-Publishing a GitHub **Release** triggers CI and attaches the compiled `.vsix` to the release. The extension is **not** published to the VS Code Marketplace; install it from the release asset or a local build.
-
-Steps:
-
-1. Merge/commit all changes with `package.json` version and `CHANGELOG.md` updated (e.g. `2.0.3`).
-2. On GitHub: **Releases → Draft a new release**.
-3. Create tag **`v2.0.3`** (or `2.0.3`; must match the version in `CHANGELOG.md` as `[2.0.3]`).
-4. Set the release title to `2.0.3` and paste the changelog section if you want.
-5. Click **Publish release**.
-
-The **Release Extension** workflow runs `npm ci`, packages with `vsce`, and uploads `pterodactyl-sftp-2.0.4.vsix` to the release assets.
-
-## Extension Settings
-
-This extension contributes the following settings:
-
-*   `pterodactyl.addAccount`: Add a new Pterodactyl account.
-*   `pterodactyl.refreshServers`: Refresh the list of servers.
+1. Update `package.json` and `CHANGELOG.md` for the new version.
+2. Create a GitHub release with tag `v2.0.4` (must match `CHANGELOG.md` as `[2.0.4]`).
+3. Click **Publish release** — the **Release Extension** workflow uploads the `.vsix`.
 
 ## Known Issues
 
--   Large file transfers may take time depending on network connection.
--   Ensure your Pterodactyl node has SFTP ports open and accessible.
+- Large file transfers depend on network speed.
+- SFTP ports must be reachable on the target host/node.
 
 ### `command 'pterodactyl.*' not found`
 
-The extension failed to activate, usually because the installed `.vsix` is missing `node_modules`. Reinstall from a proper build:
+The extension failed to activate, usually because the `.vsix` is missing `node_modules`. Reinstall from a proper release or run `npm run package` locally, then reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**). Check **Output → Extension Host** for `Cannot find module 'ssh2'`.
 
-1. Uninstall the current extension in Cursor/VS Code.
-2. Build with `npm install && npm run package` (produces ~5–15 MB `.vsix`, not ~180 KB).
-3. Install that file via **Install from VSIX...**
-4. Reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**).
+## Credits
 
-Check **Output → Extension Host** for errors such as `Cannot find module 'ssh2'`.
+- **Original extension** — [MinhMCPC/Pterodactyl-extension](https://github.com/MinhMCPC/Pterodactyl-extension) by [minhmcpc](https://github.com/MinhMCPC)
+- **Fork (v2.0.3+)** — [PJ289/vsc-pterodactyl-extension](https://github.com/PJ289/vsc-pterodactyl-extension) by [PJ289](https://github.com/PJ289) — custom SFTP host per server, GitHub-only releases, packaging/CI fixes, and Cursor install docs
 
-## Release Notes
+## License
 
-### 1.0.0
-
-Initial release of Pterodactyl SFTP extension.
--   Multi-account support.
--   SFTP file editing.
--   Power management.
--   Console terminal.
+MIT — see [LICENSE.md](./LICENSE.md).
