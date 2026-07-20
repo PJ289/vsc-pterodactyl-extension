@@ -28,22 +28,41 @@ jobs:
         run: npm run package
 
       - name: Verify VSIX package
-        shell: bash
+        shell: pwsh
         run: |
-          VSIX=$(ls *.vsix | head -1)
-          echo "VSIX file: $VSIX"
-          SIZE=$(stat -c%s "$VSIX" 2>/dev/null || stat -f%z "$VSIX")
-          echo "VSIX size: $SIZE bytes"
+          $vsix = Get-ChildItem -Path . -Filter *.vsix | Select-Object -First 1
+          if (-not $vsix) {
+            throw "ERROR: No VSIX file found."
+          }
+
+          Write-Host "VSIX file: $($vsix.Name)"
+          Write-Host "VSIX size: $($vsix.Length) bytes"
+
           # Broken packages without node_modules are ~180 KB; expect several MB on Windows
-          MIN_SIZE=2000000
-          if [ "$SIZE" -lt "$MIN_SIZE" ]; then
-            echo "ERROR: VSIX too small ($SIZE bytes). Dependencies may be missing."
-            exit 1
-          fi
-          unzip -l "$VSIX" | grep -q "node_modules/ssh2/" || (echo "ERROR: missing node_modules/ssh2" && exit 1)
-          unzip -l "$VSIX" | grep -q "node_modules/ws/" || (echo "ERROR: missing node_modules/ws" && exit 1)
-          unzip -l "$VSIX" | grep -q "extension/out/extension.js" || (echo "ERROR: missing compiled output" && exit 1)
-          echo "VSIX verification passed."
+          $minSize = 2000000
+          if ($vsix.Length -lt $minSize) {
+            throw "ERROR: VSIX too small ($($vsix.Length) bytes). Dependencies may be missing."
+          }
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($vsix.FullName)
+          try {
+            $entries = $zip.Entries.FullName
+
+            if (-not ($entries | Select-String -SimpleMatch "extension/node_modules/ssh2/")) {
+              throw "ERROR: missing node_modules/ssh2"
+            }
+            if (-not ($entries | Select-String -SimpleMatch "extension/node_modules/ws/")) {
+              throw "ERROR: missing node_modules/ws"
+            }
+            if (-not ($entries | Select-String -SimpleMatch "extension/out/extension.js")) {
+              throw "ERROR: missing compiled output"
+            }
+          } finally {
+            $zip.Dispose()
+          }
+
+          Write-Host "VSIX verification passed."
 
       - name: Extract Changelog
         shell: bash
