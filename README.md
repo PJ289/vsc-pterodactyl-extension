@@ -32,7 +32,7 @@ Manage your Pterodactyl panel servers directly from VS Code or Cursor. Browse, e
 
 ## Install
 
-Download `pterodactyl-sftp-2.0.4.vsix` from [GitHub Releases](https://github.com/PJ289/vsc-pterodactyl-extension/releases) or build it locally (see below).
+Download the latest `pterodactyl-sftp-*.vsix` from [GitHub Releases](https://github.com/PJ289/vsc-pterodactyl-extension/releases) or build it locally (see below).
 
 1. Open **Extensions** (`Ctrl+Shift+X`).
 2. Click **`...`** → **Install from VSIX...**
@@ -42,13 +42,13 @@ Download `pterodactyl-sftp-2.0.4.vsix` from [GitHub Releases](https://github.com
 **Cursor:**
 
 ```bash
-cursor --install-extension "path/to/pterodactyl-sftp-2.0.4.vsix"
+cursor --install-extension "path/to/pterodactyl-sftp-<version>.vsix"
 ```
 
 **VS Code:**
 
 ```bash
-code --install-extension "path/to/pterodactyl-sftp-2.0.4.vsix"
+code --install-extension "path/to/pterodactyl-sftp-<version>.vsix"
 ```
 
 ### Development mode
@@ -71,7 +71,7 @@ To create an installable package:
 npm run package
 ```
 
-This produces `pterodactyl-sftp-2.0.4.vsix` in the project root.
+This produces `pterodactyl-sftp-<version>.vsix` in the project root.
 
 > **Important:** Use `npm run package` or `npx vsce package` **without** `--no-dependencies`. A ~180 KB `.vsix` is missing runtime dependencies and will fail to activate.
 
@@ -80,7 +80,7 @@ This produces `pterodactyl-sftp-2.0.4.vsix` in the project root.
 Publishing a release triggers CI, which builds the `.vsix` on Windows and attaches it to the release. The extension is **not** published to the VS Code Marketplace.
 
 1. Update `package.json` and `CHANGELOG.md` for the new version.
-2. Create a GitHub release with tag `v2.0.4` (must match `CHANGELOG.md` as `[2.0.4]`).
+2. Create a GitHub release with tag `v<version>` (must match `CHANGELOG.md` as `[<version>]`).
 3. Click **Publish release** — the **Release Extension** workflow uploads the `.vsix`.
 
 ## AI Agent access (MCP)
