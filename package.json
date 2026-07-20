@@ -2,7 +2,7 @@
     "name": "pterodactyl-sftp",
     "displayName": "Pterodactyl SFTP",
     "description": "Connect to Pterodactyl panel servers, browse and edit files remotely via API",
-    "version": "2.0.4",
+    "version": "2.0.7",
     "icon": "resources/icon.png",
     "license": "MIT",
     "publisher": "minhmcpc",
@@ -11,7 +11,10 @@
         "PJ289 (https://github.com/PJ289)"
     ],
     "engines": {
-        "vscode": "^1.80.0"
+        "vscode": "^1.125.0"
+    },
+    "capabilities": {
+        "virtualWorkspaces": true
     },
     "categories": [
         "Other"
@@ -41,6 +44,29 @@
         "theme": "dark"
     },
     "contributes": {
+        "configuration": {
+            "title": "Pterodactyl SFTP",
+            "properties": {
+                "pterodactyl.agent.mode": {
+                    "type": "string",
+                    "enum": ["read-only", "read-write"],
+                    "default": "read-only",
+                    "description": "Controls whether AI agent MCP/LM tools can modify remote files. Use read-write to allow create, edit, delete, and rename via the agent."
+                },
+                "pterodactyl.agent.allowedPaths": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "default": [],
+                    "description": "If non-empty, agent write operations are only allowed under these paths (prefix match, e.g. /plugins, /config). Empty = all paths allowed except blockedPaths."
+                },
+                "pterodactyl.agent.blockedPaths": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "default": ["/world", "/world_nether", "/world_the_end", "/logs", "/crash-reports", "/cache"],
+                    "description": "Remote paths the agent cannot modify (prefix match)."
+                }
+            }
+        },
         "viewsContainers": {
             "activitybar": [
                 {
@@ -144,6 +170,232 @@
                 "command": "pterodactyl.killServer",
                 "title": "Kill Server",
                 "icon": "$(flame)"
+            },
+            {
+                "command": "pterodactyl.setupAgentMcp",
+                "title": "Pterodactyl: Setup Agent MCP",
+                "icon": "$(sparkle)"
+            }
+        ],
+        "mcpServerDefinitionProviders": [
+            {
+                "id": "pterodactyl-sftp",
+                "label": "Pterodactyl SFTP"
+            }
+        ],
+        "languageModelTools": [
+            {
+                "name": "pterodactyl-sftp_list_servers",
+                "displayName": "List Connected Pterodactyl Servers",
+                "modelDescription": "Returns all Pterodactyl game servers that are currently connected and mounted in the workspace. Always call this first to get valid serverId values before using other Pterodactyl tools.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroServers",
+                "icon": "$(server)"
+            },
+            {
+                "name": "pterodactyl-sftp_list_directory",
+                "displayName": "List Remote Directory",
+                "modelDescription": "Lists files and subdirectories at a path on a connected Pterodactyl server. Returns name and type (file/directory/symlink) for each entry. Use to explore the remote file system.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroList",
+                "icon": "$(folder-opened)",
+                "inputSchema": {
+                    "type": "object",
+                    "required": [
+                        "serverId"
+                    ],
+                    "properties": {
+                        "serverId": {
+                            "type": "string",
+                            "description": "Server identifier from pteroServers"
+                        },
+                        "path": {
+                            "type": "string",
+                            "default": "/",
+                            "description": "Remote path to list"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "pterodactyl-sftp_read_file",
+                "displayName": "Read Remote File",
+                "modelDescription": "Reads the contents of a single file from a connected Pterodactyl server without downloading it. Returns content (utf8 text or base64 for binary) and encoding.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroRead",
+                "icon": "$(file-text)",
+                "inputSchema": {
+                    "type": "object",
+                    "required": [
+                        "serverId",
+                        "path"
+                    ],
+                    "properties": {
+                        "serverId": {
+                            "type": "string",
+                            "description": "Server identifier from pteroServers"
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "Remote file path, e.g. /server.properties"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "pterodactyl-sftp_get_file_tree",
+                "displayName": "Get Remote File Tree",
+                "modelDescription": "Returns a recursive tree of file and directory names for a path on a Pterodactyl server. Use to understand the server's directory structure. Heavy directories like logs are excluded by default.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroTree",
+                "icon": "$(list-tree)",
+                "inputSchema": {
+                    "type": "object",
+                    "required": [
+                        "serverId"
+                    ],
+                    "properties": {
+                        "serverId": {
+                            "type": "string",
+                            "description": "Server identifier from pteroServers"
+                        },
+                        "path": {
+                            "type": "string",
+                            "default": "/",
+                            "description": "Root path for the tree"
+                        },
+                        "maxDepth": {
+                            "type": "integer",
+                            "default": 3,
+                            "minimum": 1,
+                            "maximum": 8
+                        },
+                        "excludes": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Directory names to skip"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "pterodactyl-sftp_search_text",
+                "displayName": "Search Text in Remote Files",
+                "modelDescription": "Searches for a regex pattern inside text files on a connected Pterodactyl server. Returns file path, line number, and matched line for each result. Binary files and files over 2 MB are skipped.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroSearch",
+                "icon": "$(search)",
+                "inputSchema": {
+                    "type": "object",
+                    "required": [
+                        "serverId",
+                        "pattern"
+                    ],
+                    "properties": {
+                        "serverId": {
+                            "type": "string",
+                            "description": "Server identifier from pteroServers"
+                        },
+                        "pattern": {
+                            "type": "string",
+                            "description": "JavaScript regex pattern to search for"
+                        },
+                        "path": {
+                            "type": "string",
+                            "default": "/",
+                            "description": "Directory to search in"
+                        },
+                        "maxFiles": {
+                            "type": "integer",
+                            "default": 200,
+                            "maximum": 500
+                        },
+                        "maxMatches": {
+                            "type": "integer",
+                            "default": 50,
+                            "maximum": 200
+                        }
+                    }
+                }
+            },
+            {
+                "name": "pterodactyl-sftp_get_permissions",
+                "displayName": "Get Agent Permissions",
+                "modelDescription": "Returns current agent permission settings: mode, allowedPaths, blockedPaths, writeEnabled. Call before write operations.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroPerms",
+                "icon": "$(shield)"
+            },
+            {
+                "name": "pterodactyl-sftp_write_file",
+                "displayName": "Write Remote File",
+                "modelDescription": "Creates or overwrites a file on a connected Pterodactyl server. Requires read-write mode and an allowed path.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroWrite",
+                "icon": "$(edit)",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["serverId", "path", "content"],
+                    "properties": {
+                        "serverId": { "type": "string" },
+                        "path": { "type": "string" },
+                        "content": { "type": "string" },
+                        "encoding": { "type": "string", "enum": ["utf8", "base64"], "default": "utf8" },
+                        "create": { "type": "boolean", "default": true }
+                    }
+                }
+            },
+            {
+                "name": "pterodactyl-sftp_delete_path",
+                "displayName": "Delete Remote Path",
+                "modelDescription": "Deletes a file or directory on a connected Pterodactyl server. Requires read-write mode and an allowed path.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroDelete",
+                "icon": "$(trash)",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["serverId", "path"],
+                    "properties": {
+                        "serverId": { "type": "string" },
+                        "path": { "type": "string" },
+                        "recursive": { "type": "boolean", "default": false }
+                    }
+                }
+            },
+            {
+                "name": "pterodactyl-sftp_create_directory",
+                "displayName": "Create Remote Directory",
+                "modelDescription": "Creates a directory on a connected Pterodactyl server. Requires read-write mode and an allowed path.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroMkdir",
+                "icon": "$(new-folder)",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["serverId", "path"],
+                    "properties": {
+                        "serverId": { "type": "string" },
+                        "path": { "type": "string" }
+                    }
+                }
+            },
+            {
+                "name": "pterodactyl-sftp_rename_path",
+                "displayName": "Rename Remote Path",
+                "modelDescription": "Renames or moves a file/directory on a connected Pterodactyl server. Both paths must be allowed.",
+                "canBeReferencedInPrompt": true,
+                "toolReferenceName": "pteroRename",
+                "icon": "$(rename)",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["serverId", "oldPath", "newPath"],
+                    "properties": {
+                        "serverId": { "type": "string" },
+                        "oldPath": { "type": "string" },
+                        "newPath": { "type": "string" }
+                    }
+                }
             }
         ],
         "menus": {
@@ -177,6 +429,11 @@
                     "command": "pterodactyl.showSftpLog",
                     "when": "view == pterodactylServers",
                     "group": "overflow@3"
+                },
+                {
+                    "command": "pterodactyl.setupAgentMcp",
+                    "when": "view == pterodactylServers",
+                    "group": "overflow@4"
                 }
             ],
             "view/item/context": [
@@ -252,12 +509,13 @@
     "devDependencies": {
         "@types/node": "^20.0.0",
         "@types/ssh2": "^1.15.5",
-        "@types/vscode": "^1.80.0",
+        "@types/vscode": "^1.125.0",
         "@types/ws": "^8.5.10",
         "@vscode/vsce": "^3.7.1",
         "typescript": "^5.3.0"
     },
     "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.29.0",
         "ssh2": "^1.15.0",
         "ws": "^8.16.0"
     }

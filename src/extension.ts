@@ -8,6 +8,12 @@ import { AccountFormPanel } from './views/accountFormPanel';
 import { SftpClient } from './sftp/sftpClient';
 import { TerminalManager } from './terminal/terminalManager';
 import { formatSftpEndpoint, resolveSftpConnection } from './utils/sftpConnection';
+import { RemoteFileAgentService } from './agent/remoteFileAgentService';
+import { AgentBridge } from './agent/agentBridge';
+import { registerLmTools } from './agent/registerLmTools';
+import { registerMcpProvider } from './mcp/registerMcpProvider';
+import { registerCursorMcp } from './mcp/registerCursorMcp';
+import { showManualMcpSetup } from './mcp/agentMcpSetup';
 
 let accountManager: AccountManager;
 let serverSettingsManager: ServerSettingsManager;
@@ -15,6 +21,7 @@ let serverTreeProvider: ServerTreeProvider;
 let fileSystemProvider: PterodactylFileSystemProvider;
 let terminalManager: TerminalManager;
 let extensionContext: vscode.ExtensionContext;
+let agentBridge: AgentBridge;
 
 import { Logger } from './utils/logger';
 
@@ -68,6 +75,31 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('pterodactyl.restartServer', (item?: ServerTreeItem) => sendPowerSignal(item, 'restart')),
         vscode.commands.registerCommand('pterodactyl.stopServer', (item?: ServerTreeItem) => sendPowerSignal(item, 'stop')),
         vscode.commands.registerCommand('pterodactyl.killServer', (item?: ServerTreeItem) => sendPowerSignal(item, 'kill')),
+        vscode.commands.registerCommand('pterodactyl.setupAgentMcp', () => showManualMcpSetup(context, agentBridge)),
+    );
+
+    // Agent / MCP layer — bridge must be ready before MCP registration
+    const agentService = new RemoteFileAgentService();
+    agentBridge = new AgentBridge(agentService);
+    void agentBridge.start()
+        .then(() => {
+            registerLmTools(context, agentService);
+            registerMcpProvider(context, agentBridge); // VS Code Copilot
+            const cursorRegistered = registerCursorMcp(context, agentBridge); // Cursor IDE
+            if (!cursorRegistered) {
+                Logger.info(
+                    'Cursor MCP API not found. Use "Pterodactyl: Setup Agent MCP" to configure manually.',
+                );
+            }
+        })
+        .catch(err => Logger.error('AgentBridge failed to start', err));
+
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('pterodactyl.agent')) {
+                notifyAgentConnectionChanged();
+            }
+        }),
     );
 
     // Auto-restore connections
@@ -367,6 +399,8 @@ async function connectToServer(item?: ServerTreeItem, silent: boolean = false): 
                     `Connected to "${server.name}" via SFTP (${sftpHost}:${sftpPort})! Browse files in the Explorer.`
                 );
             }
+            // Notify MCP layer so agent tools reflect the new connection
+            notifyAgentConnectionChanged();
         } else {
             Logger.warn(`Failed to add workspace folder for ${server.name}`);
             vscode.window.showErrorMessage(`Failed to connect to "${server.name}".`);
@@ -420,6 +454,7 @@ async function disconnectServer(item?: ServerTreeItem): Promise<void> {
 
     // Disconnect SFTP
     await fileSystemProvider.disconnectServer(identifier);
+    notifyAgentConnectionChanged();
     vscode.window.showInformationMessage(`Disconnected from "${serverName}".`);
 }
 
@@ -683,7 +718,19 @@ async function sendPowerSignal(item: ServerTreeItem | undefined, signal: 'start'
     }
 }
 
+function notifyAgentConnectionChanged(): void {
+    try {
+        const emitter = (agentBridge as any)?._mcpDidChangeEmitter;
+        if (emitter) {
+            emitter.fire();
+        }
+    } catch {
+        // non-critical
+    }
+}
+
 export function deactivate() {
+    agentBridge?.stop();
     accountManager?.dispose();
     serverTreeProvider?.dispose();
     fileSystemProvider?.dispose();

@@ -2,6 +2,29 @@
 
 All notable changes to the "pterodactyl-sftp" extension will be documented in this file.
 
+## [2.0.7] - 2026-07-15
+
+### Added
+- **Agent write tools** — MCP/LM tools: `write_file`, `delete_path`, `create_directory`, `rename_path`, and `get_permissions`.
+- **Configurable agent permissions** — Settings `pterodactyl.agent.mode` (read-only/read-write), `pterodactyl.agent.allowedPaths`, and `pterodactyl.agent.blockedPaths` control what the agent can modify on remote servers.
+
+## [2.0.6] - 2026-07-09
+
+### Fixed
+- **Cursor MCP registration** — Cursor does not support VS Code's `registerMcpServerDefinitionProvider`. The extension now uses `vscode.cursor.mcp.registerServer` so the MCP server appears in Cursor Settings after install.
+- **Manual MCP fallback** — New command **Pterodactyl: Setup Agent MCP** generates copy-paste JSON for `~/.cursor/mcp.json` when auto-registration is unavailable.
+- Agent bridge now starts before MCP registration (fixes empty bridge URL on first launch).
+
+## [2.0.5] - 2026-07-09
+
+### Added
+- **AI agent access via MCP** — When a server is connected the extension automatically registers an MCP stdio server (`Pterodactyl SFTP`) that Cursor, Copilot agent mode, and other MCP-aware tools discover without any manual configuration.
+- Five read-only tools exposed to agents: `list_servers`, `list_directory`, `read_file`, `get_file_tree`, and `search_text`. All operate over the live SFTP connection; no files are downloaded to disk.
+- `RemoteFileAgentService` — shared in-process service that calls `vscode.workspace.fs` with `ptero://` URIs, so the same logic powers both MCP and VS Code Language Model Tools.
+- `AgentBridge` — lightweight HTTP server on `127.0.0.1` with a per-session token, bridging the out-of-process MCP stdio server to the extension host.
+- Language Model Tools registration (`vscode.lm.registerTool`) for VS Code Copilot agent mode. Tools are referenceable as `#pteroServers`, `#pteroList`, `#pteroRead`, `#pteroTree`, `#pteroSearch`.
+- Engines bumped to VS Code 1.99+ (required for MCP and LM Tools APIs).
+
 ## [2.0.4] - 2026-06-07
 
 ### Fixed
