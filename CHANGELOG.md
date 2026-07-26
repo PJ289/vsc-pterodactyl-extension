@@ -2,6 +2,12 @@
 
 All notable changes to the "pterodactyl-sftp" extension will be documented in this file.
 
+## [2.0.9] - 2026-07-26
+
+### Added
+- **Agent console commands** — MCP/LM tool `send_console_command` (gated by `pterodactyl.agent.allowConsole`, default `false`). Captures short console output after sending.
+- **Terminal command history improvements** — Up/Down arrows browse recent commands; supports both CSI and application-mode key sequences; restores draft text when leaving history.
+
 ## [2.0.8] - 2026-07-26
 
 ### Changed

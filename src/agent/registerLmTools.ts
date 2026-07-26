@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
 import { RemoteFileAgentService } from './remoteFileAgentService';
+import { ConsoleAgentService } from './consoleAgentService';
 
 /**
  * Registers Language Model Tools so that VS Code Copilot agent mode can invoke
  * them directly in-process (no HTTP bridge needed; same extension host).
- *
- * Each tool delegates straight to RemoteFileAgentService which uses vscode.workspace.fs.
  */
 export function registerLmTools(
     context: vscode.ExtensionContext,
     service: RemoteFileAgentService,
+    consoleService: ConsoleAgentService,
 ): void {
     if (typeof (vscode.lm as any)?.registerTool !== 'function') {
         return;
@@ -179,6 +179,25 @@ export function registerLmTools(
             ): Promise<vscode.LanguageModelToolResult> => {
                 const { serverId, oldPath, newPath } = options.input;
                 const result = await service.renamePath(serverId, oldPath, newPath);
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
+                ]);
+            },
+        }),
+    );
+
+    // ── send_console_command ──────────────────────────────────────────────────
+    context.subscriptions.push(
+        lm.registerTool('pterodactyl-sftp_send_console_command', {
+            invoke: async (
+                options: vscode.LanguageModelToolInvocationOptions<{
+                    serverId: string;
+                    command: string;
+                    waitMs?: number;
+                }>,
+            ): Promise<vscode.LanguageModelToolResult> => {
+                const { serverId, command, waitMs = 2500 } = options.input;
+                const result = await consoleService.sendCommand(serverId, command, waitMs);
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
                 ]);

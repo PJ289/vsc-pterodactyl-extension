@@ -62,7 +62,7 @@ function bridgeCall(endpoint: string, payload: unknown): Promise<unknown> {
 
 const server = new McpServer({
     name: 'pterodactyl-sftp',
-    version: '2.0.7',
+    version: '2.0.9',
 });
 
 server.registerTool(
@@ -169,8 +169,8 @@ server.registerTool(
     {
         title: 'Get Agent Permissions',
         description:
-            'Returns the current agent permission config: mode (read-only/read-write), allowedPaths, blockedPaths, writeEnabled. ' +
-            'Call this before write operations to check if modifications are permitted.',
+            'Returns the current agent permission config: mode, allowedPaths, blockedPaths, writeEnabled, consoleEnabled. ' +
+            'Call this before write or console operations to check if they are permitted.',
         annotations: { readOnlyHint: true },
     },
     async () => {
@@ -250,6 +250,27 @@ server.registerTool(
     },
     async ({ serverId, oldPath, newPath }) => {
         const result = await bridgeCall('/rename_path', { serverId, oldPath, newPath });
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    },
+);
+
+server.registerTool(
+    'send_console_command',
+    {
+        title: 'Send Console Command',
+        description:
+            'Sends a command to the Pterodactyl server console (same as typing in the panel console). ' +
+            'Requires pterodactyl.agent.allowConsole=true. The server must be connected. ' +
+            'Returns captured console output for waitMs milliseconds after sending (default 2500).',
+        inputSchema: {
+            serverId: z.string().describe('The server identifier from list_servers'),
+            command: z.string().describe('Console command to run, e.g. "say hello" or "list"'),
+            waitMs: z.number().int().min(500).max(15000).default(2500)
+                .describe('How long to wait for console output after sending'),
+        },
+    },
+    async ({ serverId, command, waitMs }) => {
+        const result = await bridgeCall('/send_console_command', { serverId, command, waitMs });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     },
 );

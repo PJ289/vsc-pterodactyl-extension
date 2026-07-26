@@ -105,8 +105,9 @@ The extension starts a local HTTP bridge in the VS Code process and registers an
 | `delete_path` | `#pteroDelete` | Delete a file or directory |
 | `create_directory` | `#pteroMkdir` | Create a remote directory |
 | `rename_path` | `#pteroRename` | Rename or move a file/directory |
+| `send_console_command` | `#pteroConsole` | Send a server console command |
 
-Write tools require **read-write** mode (see Agent permissions below).
+Write tools require **read-write** mode. Console commands require **`pterodactyl.agent.allowConsole: true`**.
 
 ### Agent permissions
 
@@ -117,14 +118,16 @@ Control what the AI agent can do via **Settings → search "Pterodactyl Agent"**
 | `pterodactyl.agent.mode` | `read-only` | Set to `read-write` to allow create/edit/delete/rename via MCP |
 | `pterodactyl.agent.allowedPaths` | `[]` (all) | Restrict writes to these paths only, e.g. `["/plugins", "/config"]` |
 | `pterodactyl.agent.blockedPaths` | world, logs… | Paths the agent can never modify |
+| `pterodactyl.agent.allowConsole` | `false` | Allow agents to send console commands |
 
-Example — full access except world/logs:
+Example — full file access except world/logs, plus console:
 
 ```json
 {
   "pterodactyl.agent.mode": "read-write",
   "pterodactyl.agent.allowedPaths": [],
-  "pterodactyl.agent.blockedPaths": ["/world", "/world_nether", "/world_the_end", "/logs"]
+  "pterodactyl.agent.blockedPaths": ["/world", "/world_nether", "/world_the_end", "/logs"],
+  "pterodactyl.agent.allowConsole": true
 }
 ```
 

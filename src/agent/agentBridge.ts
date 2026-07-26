@@ -1,20 +1,21 @@
 import * as http from 'http';
 import * as crypto from 'crypto';
 import { RemoteFileAgentService } from './remoteFileAgentService';
+import { ConsoleAgentService } from './consoleAgentService';
 
 /**
- * Thin HTTP bridge that exposes RemoteFileAgentService to the out-of-process MCP server.
+ * Thin HTTP bridge that exposes agent services to the out-of-process MCP server.
  * Listens only on 127.0.0.1 and requires a per-session token.
  */
 export class AgentBridge {
     private server: http.Server | null = null;
     private token: string = '';
     private port: number = 0;
-    private readonly service: RemoteFileAgentService;
 
-    constructor(service: RemoteFileAgentService) {
-        this.service = service;
-    }
+    constructor(
+        private readonly service: RemoteFileAgentService,
+        private readonly consoleService: ConsoleAgentService,
+    ) {}
 
     get bridgeUrl(): string {
         return `http://127.0.0.1:${this.port}`;
@@ -123,6 +124,13 @@ export class AgentBridge {
                     payload.serverId,
                     payload.oldPath,
                     payload.newPath,
+                );
+
+            case '/send_console_command':
+                return this.consoleService.sendCommand(
+                    payload.serverId,
+                    payload.command,
+                    payload.waitMs ?? 2500,
                 );
 
             default:

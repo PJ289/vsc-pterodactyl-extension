@@ -9,6 +9,7 @@ import { SftpClient } from './sftp/sftpClient';
 import { TerminalManager } from './terminal/terminalManager';
 import { formatSftpEndpoint, resolveSftpConnection } from './utils/sftpConnection';
 import { RemoteFileAgentService } from './agent/remoteFileAgentService';
+import { ConsoleAgentService } from './agent/consoleAgentService';
 import { AgentBridge } from './agent/agentBridge';
 import { registerLmTools } from './agent/registerLmTools';
 import { registerMcpProvider } from './mcp/registerMcpProvider';
@@ -80,10 +81,22 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Agent / MCP layer — bridge must be ready before MCP registration
     const agentService = new RemoteFileAgentService();
-    agentBridge = new AgentBridge(agentService);
+    const consoleService = new ConsoleAgentService(async (serverId) => {
+        const item = await serverTreeProvider.findServer(serverId);
+        if (!item?.server || !item?.account) {
+            return undefined;
+        }
+        return {
+            serverId,
+            name: item.server.name,
+            uuid: item.server.uuid,
+            account: item.account,
+        };
+    });
+    agentBridge = new AgentBridge(agentService, consoleService);
     void agentBridge.start()
         .then(() => {
-            registerLmTools(context, agentService);
+            registerLmTools(context, agentService, consoleService);
             registerMcpProvider(context, agentBridge); // VS Code Copilot
             const cursorRegistered = registerCursorMcp(context, agentBridge); // Cursor IDE
             if (!cursorRegistered) {

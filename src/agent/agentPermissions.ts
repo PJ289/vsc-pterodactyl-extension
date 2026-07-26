@@ -8,6 +8,7 @@ export interface AgentPermissionConfig {
     allowedPaths: string[];
     blockedPaths: string[];
     writeEnabled: boolean;
+    consoleEnabled: boolean;
 }
 
 export class AgentPermissionError extends Error {
@@ -55,6 +56,7 @@ export function getAgentPermissionConfig(): AgentPermissionConfig {
         allowedPaths,
         blockedPaths,
         writeEnabled: mode === 'read-write',
+        consoleEnabled: config.get<boolean>('allowConsole', false) === true,
     };
 }
 

@@ -15,9 +15,11 @@ export class PteroTerminal {
     private cursor: number = 0;
     private history: string[] = [];
     private historyIndex: number = -1;
+    private historyDraft: string = '';
     private lastCommand: string = '';
     private isDisposing: boolean = false;
     private reconnectTimer: NodeJS.Timeout | null = null;
+    private static readonly MAX_HISTORY = 100;
 
     constructor(
         private serverName: string,
@@ -37,15 +39,17 @@ export class PteroTerminal {
                 this.disconnect();
             },
             handleInput: (data: string) => {
+                const arrow = this.parseArrowKey(data);
 
                 if (data === '\r') { // Enter
                     this.write('\r\n');
                     const cmd = this.inputBuffer.trim();
                     if (cmd.length > 0) {
-                        this.history.push(cmd);
+                        this.pushHistory(cmd);
                         this.historyIndex = -1;
+                        this.historyDraft = '';
                         this.lastCommand = cmd;
-                        this.apiClient.sendCommand(this.serverUuid, this.inputBuffer)
+                        this.apiClient.sendCommand(this.serverUuid, cmd)
                             .catch(err => {
                                 this.write(`\x1b[2K\r❌ Failed to send: ${err.message}\r\n`);
                             });
@@ -53,54 +57,93 @@ export class PteroTerminal {
                     this.inputBuffer = '';
                     this.cursor = 0;
                     this.write('> ');
-                } else if (data === '\x7f') { // Backspace
+                } else if (data === '\x7f' || data === '\b') { // Backspace
                     if (this.cursor > 0) {
-                        // Remove char at cursor-1
                         this.inputBuffer = this.inputBuffer.slice(0, this.cursor - 1) + this.inputBuffer.slice(this.cursor);
                         this.cursor--;
                         this.refreshLine();
                     }
-                } else if (data === '\x1b[A') { // Up (History Back)
-                    if (this.history.length > 0) {
-                        if (this.historyIndex === -1) {
-                            this.historyIndex = this.history.length - 1;
-                        } else if (this.historyIndex > 0) {
-                            this.historyIndex--;
-                        }
-                        this.inputBuffer = this.history[this.historyIndex];
-                        this.cursor = this.inputBuffer.length;
-                        this.refreshLine();
-                    }
-                } else if (data === '\x1b[B') { // Down (History Forward)
-                    if (this.historyIndex !== -1) {
-                        if (this.historyIndex < this.history.length - 1) {
-                            this.historyIndex++;
-                            this.inputBuffer = this.history[this.historyIndex];
-                        } else {
-                            this.historyIndex = -1;
-                            this.inputBuffer = '';
-                        }
-                        this.cursor = this.inputBuffer.length;
-                        this.refreshLine();
-                    }
-                } else if (data === '\x1b[D') { // Left
+                } else if (arrow === 'up') {
+                    this.historyUp();
+                } else if (arrow === 'down') {
+                    this.historyDown();
+                } else if (arrow === 'left') {
                     if (this.cursor > 0) {
                         this.cursor--;
                         this.write('\x1b[D');
                     }
-                } else if (data === '\x1b[C') { // Right
+                } else if (arrow === 'right') {
                     if (this.cursor < this.inputBuffer.length) {
                         this.cursor++;
                         this.write('\x1b[C');
                     }
                 } else if (data.length === 1 && data.charCodeAt(0) >= 32) {
-                    // Regular character (insert at cursor)
                     this.inputBuffer = this.inputBuffer.slice(0, this.cursor) + data + this.inputBuffer.slice(this.cursor);
                     this.cursor++;
                     this.refreshLine();
                 }
             },
         };
+    }
+
+    private parseArrowKey(data: string): 'up' | 'down' | 'left' | 'right' | null {
+        // CSI sequences (\x1b[A) and SS3/application mode (\x1bOA)
+        switch (data) {
+            case '\x1b[A':
+            case '\x1bOA':
+                return 'up';
+            case '\x1b[B':
+            case '\x1bOB':
+                return 'down';
+            case '\x1b[C':
+            case '\x1bOC':
+                return 'right';
+            case '\x1b[D':
+            case '\x1bOD':
+                return 'left';
+            default:
+                return null;
+        }
+    }
+
+    private pushHistory(cmd: string): void {
+        if (this.history.length > 0 && this.history[this.history.length - 1] === cmd) {
+            return;
+        }
+        this.history.push(cmd);
+        if (this.history.length > PteroTerminal.MAX_HISTORY) {
+            this.history.shift();
+        }
+    }
+
+    private historyUp(): void {
+        if (this.history.length === 0) {
+            return;
+        }
+        if (this.historyIndex === -1) {
+            this.historyDraft = this.inputBuffer;
+            this.historyIndex = this.history.length - 1;
+        } else if (this.historyIndex > 0) {
+            this.historyIndex--;
+        }
+        this.inputBuffer = this.history[this.historyIndex];
+        this.cursor = this.inputBuffer.length;
+        this.refreshLine();
+    }
+
+    private historyDown(): void {
+        if (this.historyIndex === -1) {
+            return;
+        }
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            this.inputBuffer = this.history[this.historyIndex];
+        } else {
+            this.historyIndex = -1;
+            this.inputBuffer = this.historyDraft;
+        }
+        this.cursor = this.inputBuffer.length;
+        this.refreshLine();
     }
 
     async show(): Promise<void> {
