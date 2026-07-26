@@ -2,12 +2,13 @@
     "name": "pterodactyl-sftp",
     "displayName": "Pterodactyl SFTP",
     "description": "Connect to Pterodactyl panel servers, browse and edit files remotely via API",
-    "version": "2.0.7",
+    "version": "2.0.8",
     "icon": "resources/icon.png",
     "license": "MIT",
-    "publisher": "minhmcpc",
-    "author": "minhmcpc",
+    "publisher": "PJ289",
+    "author": "PJ289",
     "contributors": [
+        "minhmcpc (original)",
         "PJ289 (https://github.com/PJ289)"
     ],
     "engines": {

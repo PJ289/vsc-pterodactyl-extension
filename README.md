@@ -178,10 +178,16 @@ The same tools are registered as Language Model Tools and appear in the Copilot 
 
 The extension failed to activate, usually because the `.vsix` is missing `node_modules`. Reinstall from a proper release or run `npm run package` locally, then reload the window (`Ctrl+Shift+P` → **Developer: Reload Window**). Check **Output → Extension Host** for `Cannot find module 'ssh2'`.
 
+## Extension ID
+
+This fork is published as **`PJ289.pterodactyl-sftp`**.
+
+It is separate from the original Marketplace extension (`minhmcpc.pterodactyl-sftp`). Cursor/VS Code will not replace one with the other. If you previously installed the original, uninstall it first to avoid having two extensions side by side.
+
 ## Credits
 
 - **Original extension** — [MinhMCPC/Pterodactyl-extension](https://github.com/MinhMCPC/Pterodactyl-extension) by [minhmcpc](https://github.com/MinhMCPC)
-- **Fork (v2.0.3+)** — [PJ289/vsc-pterodactyl-extension](https://github.com/PJ289/vsc-pterodactyl-extension) by [PJ289](https://github.com/PJ289) — custom SFTP host per server, GitHub-only releases, packaging/CI fixes, and Cursor install docs
+- **Fork (v2.0.3+)** — [PJ289/vsc-pterodactyl-extension](https://github.com/PJ289/vsc-pterodactyl-extension) by [PJ289](https://github.com/PJ289) — custom SFTP host, AI agent MCP tools, GitHub-only releases, packaging/CI fixes, and Cursor install docs
 
 ## License
 

@@ -2,6 +2,11 @@
 
 All notable changes to the "pterodactyl-sftp" extension will be documented in this file.
 
+## [2.0.8] - 2026-07-26
+
+### Changed
+- **Unique extension ID** — Publisher changed from `minhmcpc` to `PJ289`. The extension is now installed as `PJ289.pterodactyl-sftp`, so it no longer conflicts with or auto-updates over the original Marketplace extension (`minhmcpc.pterodactyl-sftp`).
+
 ## [2.0.7] - 2026-07-15
 
 ### Added
